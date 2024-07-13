@@ -1,5 +1,8 @@
--- Task 0
--- Create users table
+-- Task 1: Utilize enumeration
+-- drop table
+DROP TABLE IF EXISTS users;
+
+-- Create users table and add field with enum
 CREATE TABLE IF NOT EXISTS users (
     id INT NOT NULL AUTO_INCREMENT,
     email VARCHAR(255) NOT NULL UNIQUE,
