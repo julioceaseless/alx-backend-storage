@@ -4,13 +4,38 @@ Redis basic
 """
 import redis
 import uuid
-from typing import Union, Callable, Optional
+from typing import Union, Callable, Optional, Any
 from functools import wraps
+
+
+def call_history(method: Callable) -> Callable:
+    """
+    Decorator to store the history of inputs and outputs for
+    a particular function
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs) -> Any:
+        """Wrapper"""
+        input_key = f"{method.__qualname__}:inputs"
+        output_key = f"{method.__qualname__}:outputs"
+
+        # store input arguments
+        self._redis.rpush(input_key, str(args))
+
+        # Execute the orginal method and store the output
+        result = method(self, *args, **kwargs)
+
+        # store the output
+        self._redis.rpush(output_key, str(result))
+
+        return result
+    return wrapper
 
 
 def count_calls(method: Callable) -> Callable:
     """
-    decorator
+    decorator to count the number of times a method of
+    Cache class is called
     """
     @wraps(method)
     def wrapper(self, *args, **kwargs):
@@ -33,6 +58,7 @@ class Cache():
         # clear Redis database
         self._redis.flushdb
 
+    @call_history
     @count_calls
     def store(self, data: Union[str, bytes, int, float]):
         """
@@ -91,15 +117,36 @@ class Cache():
         return self.get(key, int)
 
 
+def replay(method: Callable):
+    """
+    Display the history of calls for a given method.
+
+    Args:
+        method (Callable): The method to replay.
+    """
+
+    # Get the instance self from the method
+    cache_instance = method.__self__
+
+    # get qualified name
+    method_name = method.__qualname__
+
+    input_key = f"{method_name}:inputs"
+    output_key = f"{method_name}:outputs"
+
+    inputs = cache_instance._redis.lrange(input_key, 0, -1)
+    outputs = cache_instance._redis.lrange(output_key, 0, -1)
+
+    for input_data, output_data in zip(inputs, outputs):
+        print("{}(*{}) -> {}".format(method_name,
+                                     input_data.decode('utf-8'),
+                                     output_data.decode('utf-8')))
+
+
 if __name__ == "__main__":
     """ Run only when called directly """
     cache = Cache()
-
-    TEST_CASES = {
-            b"foo": None,
-            123: int,
-            "bar": lambda d: d.decode("utf-8")
-            }
-    for value, fn in TEST_CASES.items():
-        key = cache.store(value)
-        assert cache.get(key, fn=fn) == value
+    cache.store("foo")
+    cache.store("bar")
+    cache.store(42)
+    replay(cache.store)
