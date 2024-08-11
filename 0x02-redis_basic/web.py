@@ -17,8 +17,9 @@ def url_counter(method: Callable) -> Callable:
     def wrapper(*args):
         # keep count
         count_key = f"count:{args[0]}"  # Use the first argument for url
+        print(count_key)
         r.incr(count_key)
-        print(f"accessed {r.get(count_key)} times")
+        # print(f"accessed {r.get(count_key)} times")
 
         # retrieve cached results
         cache_key = args[0]
@@ -45,3 +46,4 @@ def get_page(url: str) -> str:
 
 if __name__ == "__main__":
     get_page("http://google.com")
+    print(int(r.get('count:http://google.com')))
