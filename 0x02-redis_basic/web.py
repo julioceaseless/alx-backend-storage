@@ -16,22 +16,22 @@ def url_counter(method: Callable) -> Callable:
     @wraps(method)
     def wrapper(*args):
         # keep count
-        count_key = f"count: {args[0]}"  # Use the first argument for url
-        if int(r.get(count_key)) >= 10:
-            r.delete(count_key)
+        count_key = f"count:{args[0]}"  # Use the first argument for url
         r.incr(count_key)
-        # print(f"accessed {r.get(count_key)} times")
+        print(f"accessed {r.get(count_key)} times")
 
         # retrieve cached results
         cache_key = args[0]
         cached_data = r.get(cache_key)
         if cached_data:
             # convert data to string
+            # print("found in cache!")
             return cached_data.decode('utf-8')
 
         # cache results
         result = method(*args)
         r.set(cache_key, result, 10)  # Set expiry time
+        # print("caching...")
         return result
     return wrapper
 
@@ -44,4 +44,4 @@ def get_page(url: str) -> str:
 
 
 if __name__ == "__main__":
-    get_page("http://slowwly.robertomurray.co.uk")
+    get_page("http://google.com")
